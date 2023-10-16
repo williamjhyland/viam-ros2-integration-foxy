@@ -32,6 +32,7 @@ class RosCamera(Camera, Reconfigurable):
     props: Camera.Properties
     lock: Lock
     image: ROSImage
+    cvbridge: CvBridge
 
     @classmethod
     def new(
@@ -76,20 +77,23 @@ class RosCamera(Camera, Reconfigurable):
             ROSImage, self.ros_topic, self.subscriber_callback, qos_profile=qos_policy
         )
         self.lock = Lock()
+        self.cvbridge = CvBridge()
 
     def subscriber_callback(self, rosimage) -> None:
+        # self.logger.warn("image_received")
         self.image = rosimage
 
     async def get_image(
         self, mime_type="", timeout: Optional[float] = None, **kwargs
     ) -> Image:
-        bridge = CvBridge()
+        #bridge = CvBridge()
         with self.lock:
-            if self.image is None:
-                img = Image.new(mode="RGB", size=(250, 250))
-            else:
-                img = Image.fromarray(bridge.imgmsg_to_cv2(self.image, "rgb8")) # Image is received as bgr8 and needs to be converted to rgb
-            return img
+            img = self.image
+
+        if self.image is None:
+            return Image.new(mode="RGB", size=(250, 250))
+        else:
+            return Image.fromarray(self.cvbridge.imgmsg_to_cv2(img, "rgb8")) # Image is received as bgr8 and needs to be converted to rgb
 
     async def get_images(
         self, *, timeout: Optional[float] = None, **kwargs
